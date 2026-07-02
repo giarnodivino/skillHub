@@ -106,7 +106,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-[70vh] rounded-[2rem] bg-gradient-to-br from-violet-600 via-fuchsia-600 to-orange-400 p-2 shadow-2xl shadow-violet-900/20">
+    <div className="min-h-[70vh] rounded-4xl bg-linear-to-br from-violet-600 via-fuchsia-600 to-orange-400 p-2 shadow-2xl shadow-violet-900/20">
       <div className="grid overflow-hidden rounded-[1.7rem] bg-white/95 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="flex flex-col justify-between bg-slate-950 p-8 text-white sm:p-10 lg:p-12">
           <div>
