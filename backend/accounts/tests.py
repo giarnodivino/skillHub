@@ -1,10 +1,22 @@
+import shutil
+import tempfile
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 
 User = get_user_model()
+
+TEST_MEDIA_ROOT = tempfile.mkdtemp()
+
+
+def upload_file(name="test.txt", content=b"test file"):
+    return SimpleUploadedFile(name, content, content_type="text/plain")
 
 
 class UserModelTests(APITestCase):
@@ -32,7 +44,13 @@ class UserModelTests(APITestCase):
         self.assertTrue(user.is_superuser)
 
 
+@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
 class AuthApiTests(APITestCase):
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
+
     def test_register_customer(self):
         response = self.client.post(
             reverse("register"),
@@ -48,9 +66,30 @@ class AuthApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["email"], "new@example.com")
+        self.assertEqual(
+            response.data["contractor_verification_status"],
+            User.ContractorVerificationStatus.NOT_REQUIRED,
+        )
         self.assertNotIn("password", response.data)
 
-    def test_register_contractor(self):
+    def test_register_customer_can_upload_optional_profile_picture(self):
+        response = self.client.post(
+            reverse("register"),
+            {
+                "email": "profile@example.com",
+                "password": "StrongPass123",
+                "first_name": "Profile",
+                "last_name": "Customer",
+                "role": User.Role.CUSTOMER,
+                "profile_picture": upload_file("profile.jpg"),
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data["profile_picture"])
+
+    def test_register_contractor_requires_review_uploads(self):
         response = self.client.post(
             reverse("register"),
             {
@@ -63,8 +102,56 @@ class AuthApiTests(APITestCase):
             format="json",
         )
 
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("profile_picture", response.data)
+        self.assertIn("government_id", response.data)
+
+    def test_register_contractor_sets_pending_inactive_account(self):
+        response = self.client.post(
+            reverse("register"),
+            {
+                "email": "contractor@example.com",
+                "password": "StrongPass123",
+                "first_name": "New",
+                "last_name": "Contractor",
+                "role": User.Role.CONTRACTOR,
+                "profile_picture": upload_file("profile.jpg"),
+                "government_id": upload_file("government-id.pdf"),
+            },
+            format="multipart",
+        )
+
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["role"], User.Role.CONTRACTOR)
+        self.assertFalse(response.data["is_active"])
+        self.assertEqual(
+            response.data["contractor_verification_status"],
+            User.ContractorVerificationStatus.PENDING,
+        )
+
+        contractor = User.objects.get(email="contractor@example.com")
+        self.assertFalse(contractor.is_active)
+        self.assertTrue(contractor.profile_picture)
+        self.assertTrue(contractor.government_id)
+
+    def test_pending_contractor_cannot_login(self):
+        User.objects.create_user(
+            email="pending@example.com",
+            password="StrongPass123",
+            first_name="Pending",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+            is_active=False,
+            contractor_verification_status=User.ContractorVerificationStatus.PENDING,
+        )
+
+        response = self.client.post(
+            reverse("token_obtain_pair"),
+            {"email": "pending@example.com", "password": "StrongPass123"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_reject_public_admin_registration(self):
         response = self.client.post(
@@ -108,6 +195,40 @@ class AuthApiTests(APITestCase):
         self.assertEqual(me_response.data["id"], user.id)
         self.assertEqual(me_response.data["email"], "login@example.com")
 
+    def test_authenticated_user_can_update_profile_fields(self):
+        user = User.objects.create_user(
+            email="profile@example.com",
+            password="StrongPass123",
+            first_name="Profile",
+            last_name="User",
+            role=User.Role.CONTRACTOR,
+        )
+
+        token_response = self.client.post(
+            reverse("token_obtain_pair"),
+            {"email": "profile@example.com", "password": "StrongPass123"},
+            format="json",
+        )
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}")
+        response = self.client.patch(
+            reverse("me"),
+            {
+                "bio": "I fix homes and kitchens.",
+                "location": "Lagos",
+                "hourly_rate": "45.00",
+                "services": "Plumbing, Electrical",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertEqual(user.bio, "I fix homes and kitchens.")
+        self.assertEqual(user.location, "Lagos")
+        self.assertEqual(user.hourly_rate, Decimal("45.00"))
+        self.assertEqual(user.services, "Plumbing, Electrical")
+
     def test_contractors_endpoint_lists_only_contractors(self):
         contractor = User.objects.create_user(
             email="contractor-list@example.com",
@@ -115,6 +236,16 @@ class AuthApiTests(APITestCase):
             first_name="Listed",
             last_name="Contractor",
             role=User.Role.CONTRACTOR,
+            contractor_verification_status=User.ContractorVerificationStatus.APPROVED,
+        )
+        User.objects.create_user(
+            email="pending-contractor-list@example.com",
+            password="StrongPass123",
+            first_name="Hidden",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+            is_active=False,
+            contractor_verification_status=User.ContractorVerificationStatus.PENDING,
         )
         User.objects.create_user(
             email="customer-list@example.com",
@@ -131,3 +262,91 @@ class AuthApiTests(APITestCase):
         self.assertEqual(response.data[0]["id"], contractor.id)
         self.assertEqual(response.data[0]["name"], "Listed Contractor")
         self.assertEqual(response.data[0]["role"], User.Role.CONTRACTOR)
+
+    def test_admin_can_view_pending_contractors(self):
+        admin = User.objects.create_user(
+            email="admin-review@example.com",
+            password="StrongPass123",
+            first_name="Admin",
+            last_name="Reviewer",
+            role=User.Role.ADMIN,
+            is_staff=True,
+            is_superuser=True,
+        )
+        contractor = User.objects.create_user(
+            email="pending-review@example.com",
+            password="StrongPass123",
+            first_name="Pending",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+            is_active=False,
+            contractor_verification_status=User.ContractorVerificationStatus.PENDING,
+        )
+        User.objects.create_user(
+            email="approved-review@example.com",
+            password="StrongPass123",
+            first_name="Approved",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+            is_active=True,
+            contractor_verification_status=User.ContractorVerificationStatus.APPROVED,
+        )
+
+        token_response = self.client.post(
+            reverse("token_obtain_pair"),
+            {"email": admin.email, "password": "StrongPass123"},
+            format="json",
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+        response = self.client.get(reverse("admin-pending-contractors"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], contractor.id)
+        self.assertEqual(response.data[0]["email"], contractor.email)
+
+    def test_admin_can_approve_pending_contractor(self):
+        admin = User.objects.create_user(
+            email="admin-approve@example.com",
+            password="StrongPass123",
+            first_name="Admin",
+            last_name="Approver",
+            role=User.Role.ADMIN,
+            is_staff=True,
+            is_superuser=True,
+        )
+        contractor = User.objects.create_user(
+            email="approve-review@example.com",
+            password="StrongPass123",
+            first_name="Approve",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+            is_active=False,
+            contractor_verification_status=User.ContractorVerificationStatus.PENDING,
+        )
+
+        token_response = self.client.post(
+            reverse("token_obtain_pair"),
+            {"email": admin.email, "password": "StrongPass123"},
+            format="json",
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+        response = self.client.patch(
+            reverse("admin-review-contractor", kwargs={"pk": contractor.id}),
+            {"action": "approve"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        contractor.refresh_from_db()
+        self.assertTrue(contractor.is_active)
+        self.assertEqual(
+            contractor.contractor_verification_status,
+            User.ContractorVerificationStatus.APPROVED,
+        )

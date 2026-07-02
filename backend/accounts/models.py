@@ -35,6 +35,12 @@ class User(AbstractUser):
         CONTRACTOR = "contractor", "Contractor"
         ADMIN = "admin", "Admin"
 
+    class ContractorVerificationStatus(models.TextChoices):
+        NOT_REQUIRED = "not_required", "Not required"
+        PENDING = "pending", "Pending review"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
     username = None
     email = models.EmailField(unique=True)
     role = models.CharField(
@@ -42,6 +48,30 @@ class User(AbstractUser):
         choices=Role.choices,
         default=Role.CUSTOMER,
     )
+    profile_picture = models.FileField(
+        upload_to="profile_pictures/",
+        blank=True,
+        null=True,
+    )
+    government_id = models.FileField(
+        upload_to="government_ids/",
+        blank=True,
+        null=True,
+    )
+    contractor_verification_status = models.CharField(
+        max_length=20,
+        choices=ContractorVerificationStatus.choices,
+        default=ContractorVerificationStatus.NOT_REQUIRED,
+    )
+    bio = models.TextField(blank=True, default="")
+    location = models.CharField(max_length=120, blank=True, default="")
+    hourly_rate = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        blank=True,
+        null=True,
+    )
+    services = models.TextField(blank=True, default="")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

@@ -1,13 +1,81 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import api from "../api/axios";
+
+type AuthState = {
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  isLoading: boolean;
+};
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>({
+    isAuthenticated: false,
+    isAdmin: false,
+    isLoading: true,
+  });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const syncAuthState = async () => {
+      const token = localStorage.getItem("skillhub_access_token");
+
+      if (!token) {
+        setAuthState({ isAuthenticated: false, isAdmin: false, isLoading: false });
+        return;
+      }
+
+      try {
+        const response = await api.get("accounts/me/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setAuthState({
+          isAuthenticated: true,
+          isAdmin: response.data?.role === "admin",
+          isLoading: false,
+        });
+      } catch {
+        localStorage.removeItem("skillhub_access_token");
+        localStorage.removeItem("skillhub_refresh_token");
+        setAuthState({ isAuthenticated: false, isAdmin: false, isLoading: false });
+        window.dispatchEvent(new Event("auth-state-changed"));
+      }
+    };
+
+    void syncAuthState();
+
+    const handleAuthChange = () => {
+      void syncAuthState();
+    };
+
+    window.addEventListener("auth-state-changed", handleAuthChange);
+
+    return () => {
+      window.removeEventListener("auth-state-changed", handleAuthChange);
+    };
+  }, []);
+
+  const handleSignOut = () => {
+    localStorage.removeItem("skillhub_access_token");
+    localStorage.removeItem("skillhub_refresh_token");
+    setAuthState({ isAuthenticated: false, isAdmin: false, isLoading: false });
+    window.dispatchEvent(new Event("auth-state-changed"));
+    setIsOpen(false);
+    navigate("/");
+  };
 
   const menuItems = [
-    { label: "Home", to: "/" },
     { label: "About", to: "/about" },
-    { label: "Register", to: "/register" },
+    ...(!authState.isLoading && !authState.isAuthenticated
+      ? [
+          { label: "Register", to: "/register" },
+          { label: "Login", to: "/login" },
+        ]
+      : []),
+    ...(!authState.isLoading && authState.isAuthenticated ? [{ label: "Profile", to: "/profile" }] : []),
+    ...(!authState.isLoading && authState.isAdmin ? [{ label: "Admin", to: "/admin/contractors" }] : []),
   ];
 
   return (
@@ -33,12 +101,22 @@ export default function Navbar() {
           ))}
         </ul>
 
-        <Link
-          to="/register"
-          className="md:inline hidden bg-white hover:bg-gray-50 border border-gray-300 ml-20 px-9 py-2 rounded-full active:scale-95 transition-all"
-        >
-          Get started
-        </Link>
+        {authState.isAuthenticated ? (
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="md:inline hidden bg-white hover:bg-gray-50 border border-gray-300 ml-20 px-9 py-2 rounded-full active:scale-95 transition-all"
+          >
+            Sign out
+          </button>
+        ) : (
+          <Link
+            to="/register"
+            className="md:inline hidden bg-white hover:bg-gray-50 border border-gray-300 ml-20 px-9 py-2 rounded-full active:scale-95 transition-all"
+          >
+            Get started
+          </Link>
+        )}
 
         <button
           aria-label="menu-btn"
@@ -69,6 +147,16 @@ export default function Navbar() {
               </li>
             ))}
           </ul>
+
+          {authState.isAuthenticated ? (
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="mt-4 w-full rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700"
+            >
+              Sign out
+            </button>
+          ) : null}
         </div>
       </nav>
     </div>

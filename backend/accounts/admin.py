@@ -7,13 +7,33 @@ from .models import User
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     ordering = ("email",)
-    list_display = ("email", "first_name", "last_name", "role", "is_staff", "is_active")
-    list_filter = ("role", "is_staff", "is_active")
+    list_display = (
+        "email",
+        "first_name",
+        "last_name",
+        "role",
+        "contractor_verification_status",
+        "is_staff",
+        "is_active",
+    )
+    list_filter = ("role", "contractor_verification_status", "is_staff", "is_active")
     search_fields = ("email", "first_name", "last_name")
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Personal info", {"fields": ("first_name", "last_name", "role")}),
+        (
+            "Personal info",
+            {
+                "fields": (
+                    "first_name",
+                    "last_name",
+                    "role",
+                    "profile_picture",
+                    "government_id",
+                    "contractor_verification_status",
+                )
+            },
+        ),
         (
             "Permissions",
             {
@@ -38,6 +58,9 @@ class UserAdmin(DjangoUserAdmin):
                     "password1",
                     "password2",
                     "role",
+                    "profile_picture",
+                    "government_id",
+                    "contractor_verification_status",
                     "is_staff",
                     "is_superuser",
                     "is_active",

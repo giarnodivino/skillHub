@@ -11,6 +11,8 @@ type FormState = {
   password: string;
   confirmPassword: string;
   role: Role;
+  profilePicture: File | null;
+  governmentId: File | null;
 };
 
 const initialForm: FormState = {
@@ -20,6 +22,8 @@ const initialForm: FormState = {
   password: "",
   confirmPassword: "",
   role: "customer",
+  profilePicture: null,
+  governmentId: null,
 };
 
 const roleOptions: Array<{ value: Role; title: string; description: string }> = [
@@ -67,6 +71,11 @@ export default function RegisterPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, files } = event.target;
+    setForm((prev) => ({ ...prev, [name]: files?.[0] ?? null }));
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage(null);
@@ -76,20 +85,40 @@ export default function RegisterPage() {
       return;
     }
 
+    if (form.role === "contractor" && (!form.profilePicture || !form.governmentId)) {
+      setMessage({
+        type: "error",
+        text: "Contractors must upload a profile picture and government ID.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await api.post("accounts/register/", {
-        email: form.email,
-        password: form.password,
-        first_name: form.firstName,
-        last_name: form.lastName,
-        role: form.role,
-      });
+      const payload = new FormData();
+      payload.append("email", form.email);
+      payload.append("password", form.password);
+      payload.append("first_name", form.firstName);
+      payload.append("last_name", form.lastName);
+      payload.append("role", form.role);
+
+      if (form.profilePicture) {
+        payload.append("profile_picture", form.profilePicture);
+      }
+
+      if (form.governmentId) {
+        payload.append("government_id", form.governmentId);
+      }
+
+      await api.post("accounts/register/", payload);
 
       setMessage({
         type: "success",
-        text: "Account created successfully. You can now sign in.",
+        text:
+          form.role === "contractor"
+            ? "Application submitted. An admin will review your ID before your account becomes active."
+            : "Account created successfully. You can now sign in.",
       });
       setForm(initialForm);
       setTimeout(() => navigate("/"), 1200);
@@ -232,6 +261,37 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            <label className="block text-sm font-medium text-slate-700">
+              <span className="mb-1 block">Profile picture {form.role === "customer" ? "(optional)" : ""}</span>
+              <input
+                name="profilePicture"
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition file:mr-4 file:rounded-lg file:border-0 file:bg-slate-950 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-violet-500 focus:bg-white"
+                required={form.role === "contractor"}
+              />
+            </label>
+
+            {form.role === "contractor" ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <label className="block text-sm font-medium text-amber-950">
+                  <span className="mb-1 block">Government ID</span>
+                  <input
+                    name="governmentId"
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={handleFileChange}
+                    className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm outline-none transition file:mr-4 file:rounded-lg file:border-0 file:bg-slate-950 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-amber-500"
+                    required
+                  />
+                </label>
+                <p className="mt-2 text-sm leading-6 text-amber-800">
+                  Contractor accounts stay pending until an admin reviews this ID.
+                </p>
+              </div>
+            ) : null}
+
             {message ? (
               <div
                 className={`rounded-xl border px-4 py-3 text-sm ${
@@ -255,8 +315,8 @@ export default function RegisterPage() {
 
           <p className="mt-5 text-sm text-slate-500">
             Already have an account?{" "}
-            <Link to="/" className="font-semibold text-violet-600 hover:text-violet-700">
-              Go back home
+            <Link to="/login" className="font-semibold text-violet-600 hover:text-violet-700">
+              Sign in
             </Link>
           </p>
         </div>
