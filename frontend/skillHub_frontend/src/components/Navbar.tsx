@@ -7,6 +7,7 @@ export default function Navbar() {
   const menuItems = [
     { label: "Home", to: "/" },
     { label: "About", to: "/about" },
+    { label: "Register", to: "/register" },
   ];
 
   return (
@@ -18,9 +19,9 @@ export default function Navbar() {
       </div>
 
       <nav className="relative h-17.5 flex items-center justify-between px-6 md:px-16 lg:px-24 xl:px-32 py-4 bg-white text-gray-900 transition-all shadow">
-        <a href="#" className="text-xl font-bold">
+        <Link to="/" className="text-xl font-bold">
           Logo
-        </a>
+        </Link>
 
         <ul className="hidden md:flex items-center space-x-8 md:pl-28">
           {menuItems.map((item) => (
@@ -32,9 +33,12 @@ export default function Navbar() {
           ))}
         </ul>
 
-        <button className="md:inline hidden bg-white hover:bg-gray-50 border border-gray-300 ml-20 px-9 py-2 rounded-full active:scale-95 transition-all">
+        <Link
+          to="/register"
+          className="md:inline hidden bg-white hover:bg-gray-50 border border-gray-300 ml-20 px-9 py-2 rounded-full active:scale-95 transition-all"
+        >
           Get started
-        </button>
+        </Link>
 
         <button
           aria-label="menu-btn"

@@ -16,8 +16,8 @@ function HomePage() {
           <Link to="/about" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-4xl">
             Find a Professional
           </Link>
-          <Link to="/about" className="font-bold hover:bg-amber-100 py-2 px-4 rounded-4xl outline-2">
-            Become a Contractor
+          <Link to="/register" className="font-bold hover:bg-amber-100 py-2 px-4 rounded-4xl outline-2">
+            Create an Account
           </Link>
         </div>
       </section>
