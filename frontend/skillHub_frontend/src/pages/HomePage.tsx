@@ -13,7 +13,10 @@ function HomePage() {
           </p>
         </div>
         <div className="buttons flex justify-center gap-4 mt-4">
-          <Link to="/about" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-4xl">
+          <Link
+            to="/professionals"
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-4xl"
+          >
             Find a Professional
           </Link>
           <Link to="/register" className="font-bold hover:bg-amber-100 py-2 px-4 rounded-4xl outline-2">

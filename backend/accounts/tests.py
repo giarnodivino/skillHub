@@ -107,3 +107,27 @@ class AuthApiTests(APITestCase):
         self.assertEqual(me_response.status_code, status.HTTP_200_OK)
         self.assertEqual(me_response.data["id"], user.id)
         self.assertEqual(me_response.data["email"], "login@example.com")
+
+    def test_contractors_endpoint_lists_only_contractors(self):
+        contractor = User.objects.create_user(
+            email="contractor-list@example.com",
+            password="StrongPass123",
+            first_name="Listed",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+        )
+        User.objects.create_user(
+            email="customer-list@example.com",
+            password="StrongPass123",
+            first_name="Hidden",
+            last_name="Customer",
+            role=User.Role.CUSTOMER,
+        )
+
+        response = self.client.get(reverse("contractor-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], contractor.id)
+        self.assertEqual(response.data[0]["name"], "Listed Contractor")
+        self.assertEqual(response.data[0]["role"], User.Role.CONTRACTOR)

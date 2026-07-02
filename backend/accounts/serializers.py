@@ -12,6 +12,19 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class ContractorSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ("id", "email", "first_name", "last_name", "name", "role")
+        read_only_fields = fields
+
+    def get_name(self, obj):
+        full_name = obj.get_full_name().strip()
+        return full_name or obj.email
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
 
