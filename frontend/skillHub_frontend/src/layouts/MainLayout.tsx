@@ -3,7 +3,7 @@ import Navbar from "../components/Navbar";
 
 function MainLayout() {
   return (
-    <div style={{ maxWidth: "960px", margin: "0 auto", padding: "2rem 1rem" }}>
+    <div className="mx-auto w-full max-w-7xl px-4 py-8">
       <Navbar />
       <main>
         <Outlet />

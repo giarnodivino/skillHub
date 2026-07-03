@@ -236,6 +236,10 @@ class AuthApiTests(APITestCase):
             first_name="Listed",
             last_name="Contractor",
             role=User.Role.CONTRACTOR,
+            bio="I build clean kitchens and repair cabinets.",
+            location="Quezon City",
+            hourly_rate="55.00",
+            services="Cabinet repair, Kitchen remodeling",
             contractor_verification_status=User.ContractorVerificationStatus.APPROVED,
         )
         User.objects.create_user(
@@ -261,6 +265,10 @@ class AuthApiTests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], contractor.id)
         self.assertEqual(response.data[0]["name"], "Listed Contractor")
+        self.assertEqual(response.data[0]["bio"], contractor.bio)
+        self.assertEqual(response.data[0]["location"], contractor.location)
+        self.assertEqual(response.data[0]["hourly_rate"], "55.00")
+        self.assertEqual(response.data[0]["services"], contractor.services)
         self.assertEqual(response.data[0]["role"], User.Role.CONTRACTOR)
 
     def test_admin_can_view_pending_contractors(self):

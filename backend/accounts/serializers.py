@@ -88,6 +88,10 @@ class ContractorSerializer(serializers.ModelSerializer):
             "name",
             "role",
             "profile_picture",
+            "bio",
+            "location",
+            "hourly_rate",
+            "services",
             "contractor_verification_status",
         )
         read_only_fields = fields

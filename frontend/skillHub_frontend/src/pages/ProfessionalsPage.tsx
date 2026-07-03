@@ -8,6 +8,11 @@ type Contractor = {
   last_name: string;
   name: string;
   role: "contractor";
+  profile_picture?: string | null;
+  bio?: string;
+  location?: string;
+  hourly_rate?: string | number | null;
+  services?: string;
 };
 
 function getInitials(name: string) {
@@ -18,6 +23,39 @@ function getInitials(name: string) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function formatTypicalRate(rate?: string | number | null) {
+  if (rate === null || rate === undefined || rate === "") {
+    return "Rate not set";
+  }
+
+  return `Typical Rate: ₱ ${rate}`;
+}
+
+function getServiceTags(services?: string) {
+  return (
+    services
+      ?.split(/[\n,]+/)
+      .map((service) => service.trim())
+      .filter(Boolean) ?? []
+  );
+}
+
+function getProfilePictureUrl(path?: string | null) {
+  if (!path) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  if (path.startsWith("/")) {
+    return `http://127.0.0.1:8000${path}`;
+  }
+
+  return `http://127.0.0.1:8000/media/${path}`;
 }
 
 function ProfessionalsPage() {
@@ -58,6 +96,10 @@ function ProfessionalsPage() {
         professional.first_name,
         professional.last_name,
         professional.role,
+        professional.bio,
+        professional.location,
+        professional.hourly_rate,
+        professional.services,
       ]
         .join(" ")
         .toLowerCase();
@@ -104,58 +146,77 @@ function ProfessionalsPage() {
 
       {!isLoading && !errorMessage && (
         <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {filteredProfessionals.map((professional) => (
-            <article
-              key={professional.id}
-              className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-lg font-semibold text-sky-700">
-                    {getInitials(professional.name)}
+          {filteredProfessionals.map((professional) => {
+            const serviceTags = getServiceTags(professional.services);
+            const profilePictureUrl = getProfilePictureUrl(professional.profile_picture);
+
+            return (
+              <article
+                key={professional.id}
+                className="min-w-0 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    {profilePictureUrl ? (
+                      <img
+                        src={profilePictureUrl}
+                        alt={professional.name}
+                        className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-sky-100"
+                      />
+                    ) : (
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-100 text-lg font-semibold text-sky-700">
+                        {getInitials(professional.name)}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <h2 className="wrap-break-word text-lg font-semibold text-slate-900">{professional.name}</h2>
+                      <p className="break-all text-sm text-slate-600">{professional.email}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">{professional.name}</h2>
-                    <p className="text-sm text-slate-600">{professional.email}</p>
-                  </div>
+                  <span className="shrink-0 self-start rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    Contractor
+                  </span>
                 </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  Contractor
-                </span>
-              </div>
 
-              <div className="mt-4 flex items-center gap-3 text-sm text-slate-500">
-                <span>Remote or local</span>
-                <span>•</span>
-                <span>New</span>
-                <span>•</span>
-                <span>Contact for rates</span>
-              </div>
+                <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+                  <span>{professional.location?.trim() || "Location not added"}</span>
+                  <span>•</span>
+                  <span>{formatTypicalRate(professional.hourly_rate)}</span>
+                </div>
 
-              <p className="mt-4 text-sm leading-6 text-slate-600">
-                {professional.name} is registered as a contractor on SkillHub and available to connect with customers.
-              </p>
+                <p className="mt-4 wrap-break-word text-sm leading-6 text-slate-600">
+                  {professional.bio?.trim() || "This professional has not added a business description yet."}
+                </p>
 
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                  General contractor
-                </span>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                  SkillHub member
-                </span>
-              </div>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {serviceTags.length > 0 ? (
+                    serviceTags.map((service) => (
+                      <span
+                        key={service}
+                        className="wrap-break-word rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                      >
+                        {service}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                      Services not listed
+                    </span>
+                  )}
+                </div>
 
-              <div className="mt-6 flex items-center justify-between">
-                <button
-                  type="button"
-                  className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
-                >
-                  View profile
-                </button>
-                <span className="text-sm font-medium text-sky-600">Available for hire</span>
-              </div>
-            </article>
-          ))}
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+                  >
+                    View profile
+                  </button>
+                  <span className="text-sm font-medium text-sky-600">Available for hire</span>
+                </div>
+              </article>
+            );
+          })}
         </section>
       )}
 
