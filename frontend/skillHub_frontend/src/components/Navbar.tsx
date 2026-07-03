@@ -75,6 +75,7 @@ export default function Navbar() {
         ]
       : []),
     ...(!authState.isLoading && authState.isAuthenticated ? [{ label: "Profile", to: "/profile" }] : []),
+    ...(!authState.isLoading && authState.isAuthenticated ? [{ label: "Messages", to: "/messages" }] : []),
     ...(!authState.isLoading && authState.isAdmin ? [{ label: "Admin", to: "/admin/contractors" }] : []),
   ];
 
@@ -88,7 +89,7 @@ export default function Navbar() {
 
       <nav className="relative h-17.5 flex items-center justify-between px-6 md:px-16 lg:px-24 xl:px-32 py-4 bg-white text-gray-900 transition-all shadow">
         <Link to="/" className="text-xl font-bold">
-          Logo
+          NexTask
         </Link>
 
         <ul className="hidden md:flex items-center space-x-8 md:pl-28">

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
 type Contractor = {
@@ -59,10 +60,12 @@ function getProfilePictureUrl(path?: string | null) {
 }
 
 function ProfessionalsPage() {
+  const navigate = useNavigate();
   const [professionals, setProfessionals] = useState<Contractor[]>([]);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [startingConversationId, setStartingConversationId] = useState<number | null>(null);
 
   useEffect(() => {
     const loadProfessionals = async () => {
@@ -107,6 +110,30 @@ function ProfessionalsPage() {
       return searchableText.includes(normalizedQuery);
     });
   }, [professionals, query]);
+
+  const handleStartConversation = async (contractorId: number) => {
+    const token = localStorage.getItem("skillhub_access_token");
+
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      setStartingConversationId(contractorId);
+      setErrorMessage("");
+      const response = await api.post<{ id: number }>(
+        "chat/conversations/",
+        { contractor_id: contractorId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      navigate(`/messages/${response.data.id}`);
+    } catch {
+      setErrorMessage("We could not start this chat. Customer accounts can message approved contractors.");
+    } finally {
+      setStartingConversationId(null);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
@@ -208,9 +235,11 @@ function ProfessionalsPage() {
                 <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
                   <button
                     type="button"
+                    onClick={() => void handleStartConversation(professional.id)}
+                    disabled={startingConversationId === professional.id}
                     className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
                   >
-                    View profile
+                    {startingConversationId === professional.id ? "Opening..." : "Message"}
                   </button>
                   <span className="text-sm font-medium text-sky-600">Available for hire</span>
                 </div>

@@ -4,6 +4,7 @@ import AboutPage from "../pages/AboutPage";
 import AdminReviewPage from "../pages/AdminReviewPage";
 import HomePage from "../pages/HomePage";
 import LoginPage from "../pages/LoginPage";
+import MessagesPage from "../pages/MessagesPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import ProfessionalsPage from "../pages/ProfessionalsPage";
 import ProfilePage from "../pages/ProfilePage";
@@ -18,6 +19,8 @@ function AppRouter() {
         <Route path="/professionals" element={<ProfessionalsPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/messages" element={<MessagesPage />} />
+        <Route path="/messages/:conversationId" element={<MessagesPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/admin/contractors" element={<AdminReviewPage />} />
       </Route>
