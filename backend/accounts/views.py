@@ -1,5 +1,10 @@
+import mimetypes
+from pathlib import Path
+
 from django.contrib.auth import get_user_model
+from django.http import FileResponse, Http404
 from rest_framework import generics, permissions
+from rest_framework.views import APIView
 
 from .serializers import (
     AdminContractorReviewSerializer,
@@ -63,3 +68,30 @@ class ContractorReviewView(generics.UpdateAPIView):
 
     def get_queryset(self):
         return User.objects.filter(role=User.Role.CONTRACTOR)
+
+
+class ContractorGovernmentIdView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, pk):
+        contractor = generics.get_object_or_404(
+            User,
+            pk=pk,
+            role=User.Role.CONTRACTOR,
+        )
+
+        if not contractor.government_id:
+            raise Http404("Government ID was not uploaded.")
+
+        filename = Path(contractor.government_id.name).name
+        content_type = (
+            mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        )
+        response = FileResponse(
+            contractor.government_id.open("rb"),
+            content_type=content_type,
+            as_attachment=False,
+            filename=filename,
+        )
+        response["X-Content-Type-Options"] = "nosniff"
+        return response

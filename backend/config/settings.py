@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'core', 
     'accounts', 
     'chat',
+    'marketplace',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
@@ -64,7 +65,13 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:5176",
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -145,6 +152,7 @@ REST_FRAMEWORK = {
 STATIC_URL = 'static/'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

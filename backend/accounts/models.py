@@ -1,6 +1,11 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
+from .storage import PrivateMediaStorage
+
+
+private_media_storage = PrivateMediaStorage()
+
 
 class UserManager(BaseUserManager):
     use_in_migrations = True
@@ -55,6 +60,7 @@ class User(AbstractUser):
     )
     government_id = models.FileField(
         upload_to="government_ids/",
+        storage=private_media_storage,
         blank=True,
         null=True,
     )

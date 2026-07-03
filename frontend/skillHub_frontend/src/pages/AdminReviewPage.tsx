@@ -9,7 +9,7 @@ type ContractorApplicant = {
   last_name: string;
   role: string;
   profile_picture?: string | null;
-  government_id?: string | null;
+  has_government_id: boolean;
   contractor_verification_status: string;
   is_active: boolean;
 };
@@ -94,6 +94,32 @@ export default function AdminReviewPage() {
     }
   };
 
+  const handleOpenGovernmentId = async (applicant: ContractorApplicant) => {
+    const previewWindow = window.open("", "_blank");
+
+    try {
+      const response = await api.get(`accounts/admin/contractors/${applicant.id}/government-id/`, {
+        headers: getAuthHeaders(),
+        responseType: "blob",
+      });
+      const fileUrl = URL.createObjectURL(response.data);
+
+      if (previewWindow) {
+        previewWindow.location.href = fileUrl;
+      } else {
+        window.open(fileUrl, "_blank", "noreferrer");
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(fileUrl), 60_000);
+    } catch (error) {
+      previewWindow?.close();
+      setMessage({
+        type: "error",
+        text: `Unable to open ${applicant.first_name || applicant.email}'s government ID.`,
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-4xl bg-linear-to-br from-violet-600 via-fuchsia-600 to-orange-400 p-2 shadow-2xl shadow-violet-900/20">
@@ -141,7 +167,6 @@ export default function AdminReviewPage() {
           <div className="mt-8 space-y-5">
             {applicants.map((applicant) => {
               const profileUrl = getMediaUrl(applicant.profile_picture);
-              const governmentIdUrl = getMediaUrl(applicant.government_id);
               const applicantName = `${applicant.first_name} ${applicant.last_name}`.trim() || applicant.email;
 
               return (
@@ -199,12 +224,16 @@ export default function AdminReviewPage() {
 
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <p className="text-sm font-semibold text-slate-800">Government ID</p>
-                      {governmentIdUrl ? (
-                        <a href={governmentIdUrl} target="_blank" rel="noreferrer" className="mt-3 block">
+                      {applicant.has_government_id ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenGovernmentId(applicant)}
+                          className="mt-3 block w-full"
+                        >
                           <div className="flex h-40 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm font-medium text-slate-600">
                             Open government ID
                           </div>
-                        </a>
+                        </button>
                       ) : (
                         <p className="mt-3 text-sm text-slate-500">No government ID uploaded.</p>
                       )}

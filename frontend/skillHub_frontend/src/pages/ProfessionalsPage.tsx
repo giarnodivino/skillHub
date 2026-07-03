@@ -14,6 +14,8 @@ type Contractor = {
   location?: string;
   hourly_rate?: string | number | null;
   services?: string;
+  average_rating?: number | null;
+  review_count?: number;
 };
 
 function getInitials(name: string) {
@@ -32,6 +34,22 @@ function formatTypicalRate(rate?: string | number | null) {
   }
 
   return `Typical Rate: ₱ ${rate}`;
+}
+
+function formatRating(rating?: number | null, count = 0) {
+  if (!rating || count === 0) {
+    return "No reviews yet";
+  }
+
+  return `${rating.toFixed(1)} (${count})`;
+}
+
+function getStarFill(star: number, rating?: number | null) {
+  if (!rating) {
+    return "text-slate-300";
+  }
+
+  return star <= Math.round(rating) ? "text-amber-400" : "text-slate-300";
 }
 
 function getServiceTags(services?: string) {
@@ -209,6 +227,17 @@ function ProfessionalsPage() {
                   <span>{professional.location?.trim() || "Location not added"}</span>
                   <span>•</span>
                   <span>{formatTypicalRate(professional.hourly_rate)}</span>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="flex" aria-hidden="true">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star} className={getStarFill(star, professional.average_rating)}>
+                          ★
+                        </span>
+                      ))}
+                    </span>
+                    <span>{formatRating(professional.average_rating, professional.review_count ?? 0)}</span>
+                  </span>
                 </div>
 
                 <p className="mt-4 wrap-break-word text-sm leading-6 text-slate-600">
@@ -233,14 +262,23 @@ function ProfessionalsPage() {
                 </div>
 
                 <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => void handleStartConversation(professional.id)}
-                    disabled={startingConversationId === professional.id}
-                    className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
-                  >
-                    {startingConversationId === professional.id ? "Opening..." : "Message"}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/jobs/new?contractorId=${professional.id}`)}
+                      className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+                    >
+                      Hire
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleStartConversation(professional.id)}
+                      disabled={startingConversationId === professional.id}
+                      className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      {startingConversationId === professional.id ? "Opening..." : "Message"}
+                    </button>
+                  </div>
                   <span className="text-sm font-medium text-sky-600">Available for hire</span>
                 </div>
               </article>

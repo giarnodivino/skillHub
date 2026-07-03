@@ -3,6 +3,7 @@ import MainLayout from "../layouts/MainLayout";
 import AboutPage from "../pages/AboutPage";
 import AdminReviewPage from "../pages/AdminReviewPage";
 import HomePage from "../pages/HomePage";
+import JobsPage from "../pages/JobsPage";
 import LoginPage from "../pages/LoginPage";
 import MessagesPage from "../pages/MessagesPage";
 import NotFoundPage from "../pages/NotFoundPage";
@@ -17,6 +18,8 @@ function AppRouter() {
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/professionals" element={<ProfessionalsPage />} />
+        <Route path="/jobs" element={<JobsPage />} />
+        <Route path="/jobs/new" element={<JobsPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/messages" element={<MessagesPage />} />

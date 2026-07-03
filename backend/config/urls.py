@@ -7,6 +7,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/accounts/', include('accounts.urls')),
     path('api/chat/', include('chat.urls')),
+    path('api/marketplace/', include('marketplace.urls')),
     path('api/', include('core.urls')),  # Include the URLs from the core app
 ]
 

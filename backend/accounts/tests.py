@@ -9,10 +9,13 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from marketplace.models import Booking, JobRequest, Quote, Review
+
 
 User = get_user_model()
 
 TEST_MEDIA_ROOT = tempfile.mkdtemp()
+TEST_PRIVATE_MEDIA_ROOT = tempfile.mkdtemp()
 
 
 def upload_file(name="test.txt", content=b"test file"):
@@ -44,12 +47,16 @@ class UserModelTests(APITestCase):
         self.assertTrue(user.is_superuser)
 
 
-@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+@override_settings(
+    MEDIA_ROOT=TEST_MEDIA_ROOT,
+    PRIVATE_MEDIA_ROOT=TEST_PRIVATE_MEDIA_ROOT,
+)
 class AuthApiTests(APITestCase):
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
         shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
+        shutil.rmtree(TEST_PRIVATE_MEDIA_ROOT, ignore_errors=True)
 
     def test_register_customer(self):
         response = self.client.post(
@@ -270,6 +277,59 @@ class AuthApiTests(APITestCase):
         self.assertEqual(response.data[0]["hourly_rate"], "55.00")
         self.assertEqual(response.data[0]["services"], contractor.services)
         self.assertEqual(response.data[0]["role"], User.Role.CONTRACTOR)
+        self.assertIsNone(response.data[0]["average_rating"])
+        self.assertEqual(response.data[0]["review_count"], 0)
+
+    def test_contractors_endpoint_includes_review_summary(self):
+        customer = User.objects.create_user(
+            email="rating-customer@example.com",
+            password="StrongPass123",
+            role=User.Role.CUSTOMER,
+        )
+        contractor = User.objects.create_user(
+            email="rated-contractor@example.com",
+            password="StrongPass123",
+            first_name="Rated",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+            contractor_verification_status=User.ContractorVerificationStatus.APPROVED,
+        )
+
+        for rating in (5, 4):
+            job = JobRequest.objects.create(
+                customer=customer,
+                contractor=contractor,
+                title=f"Completed job {rating}",
+                description="Done well.",
+                location="Makati",
+                status=JobRequest.Status.COMPLETED,
+            )
+            quote = Quote.objects.create(
+                job=job,
+                contractor=contractor,
+                price="1000.00",
+                status=Quote.Status.ACCEPTED,
+            )
+            booking = Booking.objects.create(
+                job=job,
+                quote=quote,
+                customer=customer,
+                contractor=contractor,
+                status=Booking.Status.COMPLETED,
+            )
+            Review.objects.create(
+                booking=booking,
+                customer=customer,
+                contractor=contractor,
+                rating=rating,
+            )
+
+        response = self.client.get(reverse("contractor-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["id"], contractor.id)
+        self.assertEqual(response.data[0]["average_rating"], 4.5)
+        self.assertEqual(response.data[0]["review_count"], 2)
 
     def test_admin_can_view_pending_contractors(self):
         admin = User.objects.create_user(
@@ -315,6 +375,76 @@ class AuthApiTests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], contractor.id)
         self.assertEqual(response.data[0]["email"], contractor.email)
+        self.assertIn("has_government_id", response.data[0])
+        self.assertNotIn("government_id", response.data[0])
+
+    def test_admin_can_open_pending_contractor_government_id(self):
+        admin = User.objects.create_user(
+            email="admin-id-review@example.com",
+            password="StrongPass123",
+            first_name="Admin",
+            last_name="Reviewer",
+            role=User.Role.ADMIN,
+            is_staff=True,
+            is_superuser=True,
+        )
+        contractor = User.objects.create_user(
+            email="pending-id-review@example.com",
+            password="StrongPass123",
+            first_name="Pending",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+            is_active=False,
+            contractor_verification_status=User.ContractorVerificationStatus.PENDING,
+            government_id=upload_file("government-id.txt", b"private id"),
+        )
+
+        token_response = self.client.post(
+            reverse("token_obtain_pair"),
+            {"email": admin.email, "password": "StrongPass123"},
+            format="json",
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+        response = self.client.get(
+            reverse("admin-contractor-government-id", kwargs={"pk": contractor.id})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(b"".join(response.streaming_content), b"private id")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+
+    def test_non_admin_cannot_open_contractor_government_id(self):
+        customer = User.objects.create_user(
+            email="customer-id-review@example.com",
+            password="StrongPass123",
+            role=User.Role.CUSTOMER,
+        )
+        contractor = User.objects.create_user(
+            email="private-id-review@example.com",
+            password="StrongPass123",
+            role=User.Role.CONTRACTOR,
+            is_active=False,
+            contractor_verification_status=User.ContractorVerificationStatus.PENDING,
+            government_id=upload_file("government-id.txt", b"private id"),
+        )
+
+        token_response = self.client.post(
+            reverse("token_obtain_pair"),
+            {"email": customer.email, "password": "StrongPass123"},
+            format="json",
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+        response = self.client.get(
+            reverse("admin-contractor-government-id", kwargs={"pk": contractor.id})
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_admin_can_approve_pending_contractor(self):
         admin = User.objects.create_user(

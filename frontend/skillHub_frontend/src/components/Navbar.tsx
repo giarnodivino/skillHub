@@ -75,6 +75,7 @@ export default function Navbar() {
         ]
       : []),
     ...(!authState.isLoading && authState.isAuthenticated ? [{ label: "Profile", to: "/profile" }] : []),
+    ...(!authState.isLoading && authState.isAuthenticated ? [{ label: "Jobs", to: "/jobs" }] : []),
     ...(!authState.isLoading && authState.isAuthenticated ? [{ label: "Messages", to: "/messages" }] : []),
     ...(!authState.isLoading && authState.isAdmin ? [{ label: "Admin", to: "/admin/contractors" }] : []),
   ];

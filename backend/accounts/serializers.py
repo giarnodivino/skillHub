@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Avg
 from rest_framework import serializers
 
 
@@ -7,6 +8,7 @@ User = get_user_model()
 
 class AdminContractorReviewSerializer(serializers.ModelSerializer):
     action = serializers.ChoiceField(write_only=True, choices=["approve", "reject"])
+    has_government_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -17,7 +19,7 @@ class AdminContractorReviewSerializer(serializers.ModelSerializer):
             "last_name",
             "role",
             "profile_picture",
-            "government_id",
+            "has_government_id",
             "contractor_verification_status",
             "is_active",
             "action",
@@ -29,10 +31,13 @@ class AdminContractorReviewSerializer(serializers.ModelSerializer):
             "last_name",
             "role",
             "profile_picture",
-            "government_id",
+            "has_government_id",
             "contractor_verification_status",
             "is_active",
         )
+
+    def get_has_government_id(self, obj):
+        return bool(obj.government_id)
 
     def update(self, instance, validated_data):
         action = validated_data.pop("action")
@@ -77,6 +82,8 @@ class UserSerializer(serializers.ModelSerializer):
 
 class ContractorSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -93,12 +100,21 @@ class ContractorSerializer(serializers.ModelSerializer):
             "hourly_rate",
             "services",
             "contractor_verification_status",
+            "average_rating",
+            "review_count",
         )
         read_only_fields = fields
 
     def get_name(self, obj):
         full_name = obj.get_full_name().strip()
         return full_name or obj.email
+
+    def get_average_rating(self, obj):
+        average = obj.reviews_received.aggregate(average=Avg("rating"))["average"]
+        return round(average, 1) if average is not None else None
+
+    def get_review_count(self, obj):
+        return obj.reviews_received.count()
 
 
 class RegisterSerializer(serializers.ModelSerializer):

@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
     ContractorListView,
+    ContractorGovernmentIdView,
     ContractorReviewView,
     MeView,
     PendingContractorListView,
@@ -25,5 +26,10 @@ urlpatterns = [
         "admin/contractors/<int:pk>/",
         ContractorReviewView.as_view(),
         name="admin-review-contractor",
+    ),
+    path(
+        "admin/contractors/<int:pk>/government-id/",
+        ContractorGovernmentIdView.as_view(),
+        name="admin-contractor-government-id",
     ),
 ]
