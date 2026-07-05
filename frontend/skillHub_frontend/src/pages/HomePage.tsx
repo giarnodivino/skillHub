@@ -25,10 +25,9 @@ const trustItems = [
 
 function HomePage() {
   return (
-    <div className="space-y-16 pb-12">
+    <div className="space-y-32 pb-24 md:space-y-40 md:pb-28">
       {/* TITLE SECTION */}
-      <section>
-        <br />
+      <section className="pt-12 md:pt-16">
         <div className="text-center p-5">
           <h1 className="text-4xl font-bold">Welcome to NexTask!</h1>
           <p className="mt-2">
