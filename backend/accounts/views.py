@@ -6,6 +6,7 @@ from django.http import FileResponse, Http404
 from rest_framework import generics, permissions
 from rest_framework.views import APIView
 
+from .location import haversine_distance_km, parse_coordinate, parse_positive_decimal
 from .serializers import (
     AdminContractorReviewSerializer,
     ContractorSerializer,
@@ -44,11 +45,41 @@ class ContractorListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        return User.objects.filter(
+        queryset = User.objects.filter(
             role=User.Role.CONTRACTOR,
             is_active=True,
             contractor_verification_status=User.ContractorVerificationStatus.APPROVED,
         ).order_by("first_name", "last_name", "email")
+
+        latitude = parse_coordinate(self.request.query_params.get("lat"), -90, 90)
+        longitude = parse_coordinate(self.request.query_params.get("lng"), -180, 180)
+        search_radius = parse_positive_decimal(self.request.query_params.get("radius_km"))
+
+        if latitude is None or longitude is None:
+            return queryset
+
+        if search_radius is None:
+            search_radius = 25
+
+        nearby_contractors = []
+        for contractor in queryset:
+            if contractor.latitude is None or contractor.longitude is None:
+                continue
+
+            distance = haversine_distance_km(
+                latitude,
+                longitude,
+                contractor.latitude,
+                contractor.longitude,
+            )
+            contractor_radius = contractor.service_radius_km
+            if distance <= float(search_radius) and (
+                contractor_radius is None or distance <= float(contractor_radius)
+            ):
+                contractor._distance_km = distance
+                nearby_contractors.append(contractor)
+
+        return sorted(nearby_contractors, key=lambda contractor: contractor._distance_km)
 
 
 class PendingContractorListView(generics.ListAPIView):

@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
 
-from accounts.serializers import ContractorSerializer
+from accounts.serializers import ContractorSerializer, NullableDecimalField
 from chat.serializers import ChatUserSerializer
 from .models import Booking, JobRequest, Quote, Review
 
@@ -196,6 +196,22 @@ class JobRequestSerializer(serializers.ModelSerializer):
     contractor_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     quotes = QuoteSerializer(many=True, read_only=True)
     booking = BookingSerializer(read_only=True)
+    latitude = NullableDecimalField(
+        max_digits=9,
+        decimal_places=6,
+        allow_null=True,
+        required=False,
+        min_value=-90,
+        max_value=90,
+    )
+    longitude = NullableDecimalField(
+        max_digits=9,
+        decimal_places=6,
+        allow_null=True,
+        required=False,
+        min_value=-180,
+        max_value=180,
+    )
 
     class Meta:
         model = JobRequest
@@ -208,6 +224,8 @@ class JobRequestSerializer(serializers.ModelSerializer):
             "category",
             "description",
             "location",
+            "latitude",
+            "longitude",
             "budget",
             "preferred_start",
             "status",

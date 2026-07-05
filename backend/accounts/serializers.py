@@ -6,6 +6,13 @@ from rest_framework import serializers
 User = get_user_model()
 
 
+class NullableDecimalField(serializers.DecimalField):
+    def to_internal_value(self, data):
+        if data == "":
+            return None
+        return super().to_internal_value(data)
+
+
 class AdminContractorReviewSerializer(serializers.ModelSerializer):
     action = serializers.ChoiceField(write_only=True, choices=["approve", "reject"])
     has_government_id = serializers.SerializerMethodField()
@@ -57,6 +64,31 @@ class AdminContractorReviewSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    latitude = NullableDecimalField(
+        max_digits=9,
+        decimal_places=6,
+        allow_null=True,
+        required=False,
+        min_value=-90,
+        max_value=90,
+    )
+    longitude = NullableDecimalField(
+        max_digits=9,
+        decimal_places=6,
+        allow_null=True,
+        required=False,
+        min_value=-180,
+        max_value=180,
+    )
+    service_radius_km = NullableDecimalField(
+        max_digits=6,
+        decimal_places=2,
+        allow_null=True,
+        required=False,
+        min_value=1,
+        max_value=500,
+    )
+
     class Meta:
         model = User
         fields = (
@@ -68,6 +100,9 @@ class UserSerializer(serializers.ModelSerializer):
             "profile_picture",
             "bio",
             "location",
+            "latitude",
+            "longitude",
+            "service_radius_km",
             "hourly_rate",
             "services",
             "contractor_verification_status",
@@ -84,6 +119,16 @@ class ContractorSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
     review_count = serializers.SerializerMethodField()
+    distance_km = serializers.SerializerMethodField()
+    latitude = NullableDecimalField(
+        max_digits=9, decimal_places=6, allow_null=True, read_only=True
+    )
+    longitude = NullableDecimalField(
+        max_digits=9, decimal_places=6, allow_null=True, read_only=True
+    )
+    service_radius_km = NullableDecimalField(
+        max_digits=6, decimal_places=2, allow_null=True, read_only=True
+    )
 
     class Meta:
         model = User
@@ -97,6 +142,10 @@ class ContractorSerializer(serializers.ModelSerializer):
             "profile_picture",
             "bio",
             "location",
+            "latitude",
+            "longitude",
+            "service_radius_km",
+            "distance_km",
             "hourly_rate",
             "services",
             "contractor_verification_status",
@@ -116,9 +165,37 @@ class ContractorSerializer(serializers.ModelSerializer):
     def get_review_count(self, obj):
         return obj.reviews_received.count()
 
+    def get_distance_km(self, obj):
+        distance = getattr(obj, "_distance_km", None)
+        return round(distance, 1) if distance is not None else None
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
+    latitude = NullableDecimalField(
+        max_digits=9,
+        decimal_places=6,
+        allow_null=True,
+        required=False,
+        min_value=-90,
+        max_value=90,
+    )
+    longitude = NullableDecimalField(
+        max_digits=9,
+        decimal_places=6,
+        allow_null=True,
+        required=False,
+        min_value=-180,
+        max_value=180,
+    )
+    service_radius_km = NullableDecimalField(
+        max_digits=6,
+        decimal_places=2,
+        allow_null=True,
+        required=False,
+        min_value=1,
+        max_value=500,
+    )
 
     class Meta:
         model = User
@@ -132,6 +209,9 @@ class RegisterSerializer(serializers.ModelSerializer):
             "profile_picture",
             "bio",
             "location",
+            "latitude",
+            "longitude",
+            "service_radius_km",
             "hourly_rate",
             "services",
             "government_id",

@@ -223,6 +223,9 @@ class AuthApiTests(APITestCase):
             {
                 "bio": "I fix homes and kitchens.",
                 "location": "Lagos",
+                "latitude": "6.524400",
+                "longitude": "3.379200",
+                "service_radius_km": "20.00",
                 "hourly_rate": "45.00",
                 "services": "Plumbing, Electrical",
             },
@@ -233,6 +236,9 @@ class AuthApiTests(APITestCase):
         user.refresh_from_db()
         self.assertEqual(user.bio, "I fix homes and kitchens.")
         self.assertEqual(user.location, "Lagos")
+        self.assertEqual(user.latitude, Decimal("6.524400"))
+        self.assertEqual(user.longitude, Decimal("3.379200"))
+        self.assertEqual(user.service_radius_km, Decimal("20.00"))
         self.assertEqual(user.hourly_rate, Decimal("45.00"))
         self.assertEqual(user.services, "Plumbing, Electrical")
 
@@ -245,6 +251,9 @@ class AuthApiTests(APITestCase):
             role=User.Role.CONTRACTOR,
             bio="I build clean kitchens and repair cabinets.",
             location="Quezon City",
+            latitude="14.676000",
+            longitude="121.043700",
+            service_radius_km="15.00",
             hourly_rate="55.00",
             services="Cabinet repair, Kitchen remodeling",
             contractor_verification_status=User.ContractorVerificationStatus.APPROVED,
@@ -274,10 +283,58 @@ class AuthApiTests(APITestCase):
         self.assertEqual(response.data[0]["name"], "Listed Contractor")
         self.assertEqual(response.data[0]["bio"], contractor.bio)
         self.assertEqual(response.data[0]["location"], contractor.location)
+        self.assertEqual(response.data[0]["latitude"], "14.676000")
+        self.assertEqual(response.data[0]["longitude"], "121.043700")
+        self.assertEqual(response.data[0]["service_radius_km"], "15.00")
+        self.assertIsNone(response.data[0]["distance_km"])
         self.assertEqual(response.data[0]["hourly_rate"], "55.00")
         self.assertEqual(response.data[0]["services"], contractor.services)
         self.assertEqual(response.data[0]["role"], User.Role.CONTRACTOR)
         self.assertIsNone(response.data[0]["average_rating"])
+
+    def test_contractors_endpoint_filters_by_radius_and_service_area(self):
+        near_contractor = User.objects.create_user(
+            email="near@example.com",
+            password="StrongPass123",
+            first_name="Near",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+            location="Makati",
+            latitude="14.554700",
+            longitude="121.024400",
+            service_radius_km="10.00",
+            contractor_verification_status=User.ContractorVerificationStatus.APPROVED,
+        )
+        User.objects.create_user(
+            email="far@example.com",
+            password="StrongPass123",
+            first_name="Far",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+            location="Quezon City",
+            latitude="14.676000",
+            longitude="121.043700",
+            service_radius_km="5.00",
+            contractor_verification_status=User.ContractorVerificationStatus.APPROVED,
+        )
+        User.objects.create_user(
+            email="unset@example.com",
+            password="StrongPass123",
+            first_name="Unset",
+            last_name="Contractor",
+            role=User.Role.CONTRACTOR,
+            contractor_verification_status=User.ContractorVerificationStatus.APPROVED,
+        )
+
+        response = self.client.get(
+            reverse("contractor-list"),
+            {"lat": "14.554700", "lng": "121.024400", "radius_km": "8"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], near_contractor.id)
+        self.assertEqual(response.data[0]["distance_km"], 0.0)
         self.assertEqual(response.data[0]["review_count"], 0)
 
     def test_contractors_endpoint_includes_review_summary(self):

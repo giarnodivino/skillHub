@@ -88,3 +88,9 @@ The frontend API client currently points to:
 ```text
 http://127.0.0.1:8000/api/
 ```
+
+To enable real location suggestions, create `frontend/skillHub_frontend/.env` and add a Mapbox access token:
+
+```env
+VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_access_token
+```

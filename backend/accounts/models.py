@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 from .storage import PrivateMediaStorage, PrivateS3MediaStorage
 
@@ -73,6 +74,27 @@ class User(AbstractUser):
     )
     bio = models.TextField(blank=True, default="")
     location = models.CharField(max_length=120, blank=True, default="")
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
+    service_radius_km = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(1), MaxValueValidator(500)],
+    )
     hourly_rate = models.DecimalField(
         max_digits=8,
         decimal_places=2,

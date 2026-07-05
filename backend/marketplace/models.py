@@ -28,6 +28,20 @@ class JobRequest(models.Model):
     category = models.CharField(max_length=80, blank=True, default="")
     description = models.TextField()
     location = models.CharField(max_length=160)
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
     budget = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     preferred_start = models.DateTimeField(blank=True, null=True)
     status = models.CharField(

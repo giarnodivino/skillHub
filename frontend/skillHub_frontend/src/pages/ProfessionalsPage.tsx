@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
+import LocationInput from "../components/LocationInput";
 
 type Contractor = {
   id: number;
@@ -12,6 +13,10 @@ type Contractor = {
   profile_picture?: string | null;
   bio?: string;
   location?: string;
+  latitude?: string | null;
+  longitude?: string | null;
+  service_radius_km?: string | number | null;
+  distance_km?: number | null;
   hourly_rate?: string | number | null;
   services?: string;
   average_rating?: number | null;
@@ -81,6 +86,18 @@ function ProfessionalsPage() {
   const navigate = useNavigate();
   const [professionals, setProfessionals] = useState<Contractor[]>([]);
   const [query, setQuery] = useState("");
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    location: "",
+    latitude: null as string | null,
+    longitude: null as string | null,
+    radius: "15",
+    minRating: "",
+    minReviews: "",
+    minRate: "",
+    maxRate: "",
+  });
+  const [draftFilters, setDraftFilters] = useState(filters);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [startingConversationId, setStartingConversationId] = useState<number | null>(null);
@@ -91,7 +108,11 @@ function ProfessionalsPage() {
         setIsLoading(true);
         setErrorMessage("");
 
-        const response = await api.get<Contractor[]>("accounts/contractors/");
+        const params =
+          filters.latitude && filters.longitude
+            ? { lat: filters.latitude, lng: filters.longitude, radius_km: filters.radius || "15" }
+            : undefined;
+        const response = await api.get<Contractor[]>("accounts/contractors/", { params });
         setProfessionals(response.data);
       } catch {
         setErrorMessage("We could not load professionals right now. Please try again in a moment.");
@@ -101,14 +122,14 @@ function ProfessionalsPage() {
     };
 
     loadProfessionals();
-  }, []);
+  }, [filters.latitude, filters.longitude, filters.radius]);
 
   const filteredProfessionals = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return professionals;
-    }
+    const minRating = Number(filters.minRating);
+    const minReviews = Number(filters.minReviews);
+    const minRate = Number(filters.minRate);
+    const maxRate = Number(filters.maxRate);
 
     return professionals.filter((professional) => {
       const searchableText = [
@@ -125,9 +146,50 @@ function ProfessionalsPage() {
         .join(" ")
         .toLowerCase();
 
-      return searchableText.includes(normalizedQuery);
+      const matchesQuery = normalizedQuery ? searchableText.includes(normalizedQuery) : true;
+      const rating = professional.average_rating ?? 0;
+      const reviewCount = professional.review_count ?? 0;
+      const rate = Number(professional.hourly_rate ?? 0);
+
+      return (
+        matchesQuery &&
+        (!filters.minRating || rating >= minRating) &&
+        (!filters.minReviews || reviewCount >= minReviews) &&
+        (!filters.minRate || rate >= minRate) &&
+        (!filters.maxRate || (rate > 0 && rate <= maxRate))
+      );
     });
-  }, [professionals, query]);
+  }, [filters.maxRate, filters.minRate, filters.minRating, filters.minReviews, professionals, query]);
+
+  const activeFilterCount = [
+    filters.latitude && filters.longitude,
+    filters.minRating,
+    filters.minReviews,
+    filters.minRate,
+    filters.maxRate,
+  ].filter(Boolean).length;
+
+  const handleApplyFilters = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFilters(draftFilters);
+    setIsFiltersOpen(false);
+  };
+
+  const handleResetFilters = () => {
+    const emptyFilters = {
+      location: "",
+      latitude: null,
+      longitude: null,
+      radius: "15",
+      minRating: "",
+      minReviews: "",
+      minRate: "",
+      maxRate: "",
+    };
+    setDraftFilters(emptyFilters);
+    setFilters(emptyFilters);
+    setIsFiltersOpen(false);
+  };
 
   const handleStartConversation = async (contractorId: number) => {
     const token = localStorage.getItem("skillhub_access_token");
@@ -167,17 +229,166 @@ function ProfessionalsPage() {
 
       <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name or email"
-            className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm outline-none ring-0 focus:border-sky-500 lg:max-w-md"
-          />
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start">
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by name, service, or email"
+              className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm outline-none ring-0 focus:border-sky-500"
+            />
 
-          <p className="text-sm font-medium text-slate-500">{professionals.length} contractors available</p>
+            <button
+              type="button"
+              onClick={() => {
+                setDraftFilters(filters);
+                setIsFiltersOpen(true);
+              }}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Filters
+              {activeFilterCount > 0 ? (
+                <span className="rounded-full bg-slate-900 px-2 py-0.5 text-xs text-white">{activeFilterCount}</span>
+              ) : null}
+            </button>
+          </div>
+
+          <p className="text-sm font-medium text-slate-500">
+            {filteredProfessionals.length} of {professionals.length} contractors shown
+          </p>
         </div>
       </section>
+
+      {isFiltersOpen ? (
+        <div className="fixed inset-0 z-40 flex items-end bg-slate-950/40 px-4 py-6 sm:items-center sm:justify-center">
+          <form
+            onSubmit={handleApplyFilters}
+            className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-5 shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">Filters</h2>
+                <p className="mt-1 text-sm text-slate-500">Narrow contractors by distance, reviews, and rate.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFiltersOpen(false)}
+                className="rounded-full border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-5">
+              <div className="grid gap-4 md:grid-cols-[1fr_150px]">
+                <label className="text-sm font-medium text-slate-700">
+                  <span className="mb-1 block">Location</span>
+                  <LocationInput
+                    value={draftFilters.location}
+                    latitude={draftFilters.latitude}
+                    longitude={draftFilters.longitude}
+                    onChange={(location) =>
+                      setDraftFilters((prev) => ({
+                        ...prev,
+                        location: location.label,
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                      }))
+                    }
+                    placeholder="Search near a real location"
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-0 focus:border-sky-500"
+                  />
+                </label>
+
+                <label className="text-sm font-medium text-slate-700">
+                  <span className="mb-1 block">Radius km</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="500"
+                    value={draftFilters.radius}
+                    onChange={(event) => setDraftFilters((prev) => ({ ...prev, radius: event.target.value }))}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-0 focus:border-sky-500"
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm font-medium text-slate-700">
+                  <span className="mb-1 block">Minimum rating</span>
+                  <select
+                    value={draftFilters.minRating}
+                    onChange={(event) => setDraftFilters((prev) => ({ ...prev, minRating: event.target.value }))}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-0 focus:border-sky-500"
+                  >
+                    <option value="">Any rating</option>
+                    <option value="5">5 stars</option>
+                    <option value="4">4+ stars</option>
+                    <option value="3">3+ stars</option>
+                  </select>
+                </label>
+
+                <label className="text-sm font-medium text-slate-700">
+                  <span className="mb-1 block">Minimum reviews</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={draftFilters.minReviews}
+                    onChange={(event) => setDraftFilters((prev) => ({ ...prev, minReviews: event.target.value }))}
+                    placeholder="e.g. 3"
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-0 focus:border-sky-500"
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm font-medium text-slate-700">
+                  <span className="mb-1 block">Minimum typical rate</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={draftFilters.minRate}
+                    onChange={(event) => setDraftFilters((prev) => ({ ...prev, minRate: event.target.value }))}
+                    placeholder="₱ min"
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-0 focus:border-sky-500"
+                  />
+                </label>
+
+                <label className="text-sm font-medium text-slate-700">
+                  <span className="mb-1 block">Maximum typical rate</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={draftFilters.maxRate}
+                    onChange={(event) => setDraftFilters((prev) => ({ ...prev, maxRate: event.target.value }))}
+                    placeholder="₱ max"
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-0 focus:border-sky-500"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Reset
+              </button>
+              <button
+                type="submit"
+                className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+              >
+                Apply filters
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
       {isLoading && (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm">
@@ -225,6 +436,12 @@ function ProfessionalsPage() {
 
                 <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
                   <span>{professional.location?.trim() || "Location not added"}</span>
+                  {professional.distance_km !== null && professional.distance_km !== undefined ? (
+                    <>
+                      <span>•</span>
+                      <span>{professional.distance_km.toFixed(1)} km away</span>
+                    </>
+                  ) : null}
                   <span>•</span>
                   <span>{formatTypicalRate(professional.hourly_rate)}</span>
                   <span>•</span>

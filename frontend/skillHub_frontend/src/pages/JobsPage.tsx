@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api/axios";
+import LocationInput from "../components/LocationInput";
 
 type User = {
   id: number;
@@ -56,6 +57,8 @@ type Job = {
   category: string;
   description: string;
   location: string;
+  latitude?: string | null;
+  longitude?: string | null;
   budget?: string | null;
   preferred_start?: string | null;
   status: "requested" | "quoted" | "accepted" | "in_progress" | "completed" | "cancelled";
@@ -69,6 +72,8 @@ type JobForm = {
   category: string;
   description: string;
   location: string;
+  latitude: string | null;
+  longitude: string | null;
   budget: string;
   preferredStart: string;
 };
@@ -89,6 +94,8 @@ const emptyJobForm: JobForm = {
   category: "",
   description: "",
   location: "",
+  latitude: null,
+  longitude: null,
   budget: "",
   preferredStart: "",
 };
@@ -206,6 +213,8 @@ export default function JobsPage() {
           category: jobForm.category,
           description: jobForm.description,
           location: jobForm.location,
+          latitude: jobForm.latitude,
+          longitude: jobForm.longitude,
           budget: jobForm.budget || null,
           preferred_start: toApiDate(jobForm.preferredStart),
           contractor_id: contractorId ? Number(contractorId) : null,
@@ -408,11 +417,20 @@ export default function JobsPage() {
                     placeholder="Describe the work"
                     className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-violet-500"
                   />
-                  <input
+                  <LocationInput
                     required
                     value={jobForm.location}
-                    onChange={(event) => setJobForm((prev) => ({ ...prev, location: event.target.value }))}
-                    placeholder="Location"
+                    latitude={jobForm.latitude}
+                    longitude={jobForm.longitude}
+                    onChange={(location) =>
+                      setJobForm((prev) => ({
+                        ...prev,
+                        location: location.label,
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                      }))
+                    }
+                    placeholder="Search job location"
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-violet-500"
                   />
                   <input

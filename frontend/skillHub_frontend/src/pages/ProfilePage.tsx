@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
+import LocationInput from "../components/LocationInput";
 
 type ProfileUser = {
   id: number;
@@ -11,6 +12,9 @@ type ProfileUser = {
   profile_picture?: string | null;
   bio?: string;
   location?: string;
+  latitude?: string | null;
+  longitude?: string | null;
+  service_radius_km?: string | number | null;
   hourly_rate?: string | number | null;
   services?: string;
   contractor_verification_status?: string;
@@ -21,6 +25,9 @@ type FormState = {
   lastName: string;
   bio: string;
   location: string;
+  latitude: string | null;
+  longitude: string | null;
+  serviceRadius: string;
   typicalRate: string;
   services: string;
   profilePicture: File | null;
@@ -31,6 +38,9 @@ const initialForm: FormState = {
   lastName: "",
   bio: "",
   location: "",
+  latitude: null,
+  longitude: null,
+  serviceRadius: "",
   typicalRate: "",
   services: "",
   profilePicture: null,
@@ -99,6 +109,9 @@ export default function ProfilePage() {
           lastName: user.last_name ?? "",
           bio: user.bio ?? "",
           location: user.location ?? "",
+          latitude: user.latitude ?? null,
+          longitude: user.longitude ?? null,
+          serviceRadius: user.service_radius_km ? String(user.service_radius_km) : "",
           typicalRate: user.hourly_rate ? String(user.hourly_rate) : "",
           services: user.services ?? "",
           profilePicture: null,
@@ -144,7 +157,15 @@ export default function ProfilePage() {
       payload.append("last_name", form.lastName);
       payload.append("bio", form.bio);
       payload.append("location", form.location);
+      payload.append("latitude", form.latitude ?? "");
+      payload.append("longitude", form.longitude ?? "");
       payload.append("services", form.services);
+
+      if (form.serviceRadius.trim()) {
+        payload.append("service_radius_km", form.serviceRadius);
+      } else {
+        payload.append("service_radius_km", "");
+      }
 
       if (form.typicalRate.trim()) {
         payload.append("hourly_rate", form.typicalRate);
@@ -211,10 +232,18 @@ export default function ProfilePage() {
             <span>Location</span>
             <span className="font-medium text-slate-900">{profile.location || "Not added yet"}</span>
           </div>
+          {isContractor ? (
+            <div className="flex items-center justify-between">
+              <span>Service radius</span>
+              <span className="font-medium text-slate-900">
+                {profile.service_radius_km ? `${profile.service_radius_km} km` : "Not set"}
+              </span>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between">
             <span>Typical rate</span>
             <span className="font-medium text-slate-900">
-              {profile.hourly_rate ? `$${profile.hourly_rate}` : "Not set"}
+              {profile.hourly_rate ? `₱ ${profile.hourly_rate}` : "Not set"}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -301,13 +330,20 @@ export default function ProfilePage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium text-slate-700">
                   <span className="mb-1 block">Location</span>
-                  <input
-                    name="location"
-                    type="text"
+                  <LocationInput
                     value={form.location}
-                    onChange={handleChange}
+                    latitude={form.latitude}
+                    longitude={form.longitude}
+                    onChange={(location) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        location: location.label,
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                      }))
+                    }
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-violet-500 focus:bg-white"
-                    placeholder="e.g. Nairobi"
+                    placeholder="Search city or address"
                   />
                 </label>
 
@@ -325,6 +361,21 @@ export default function ProfilePage() {
                   />
                 </label>
               </div>
+
+              <label className="block text-sm font-medium text-slate-700">
+                <span className="mb-1 block">Service radius (km)</span>
+                <input
+                  name="serviceRadius"
+                  type="number"
+                  min="1"
+                  max="500"
+                  step="1"
+                  value={form.serviceRadius}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-violet-500 focus:bg-white"
+                  placeholder="15"
+                />
+              </label>
 
               <label className="block text-sm font-medium text-slate-700">
                 <span className="mb-1 block">Services</span>

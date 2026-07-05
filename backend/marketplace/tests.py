@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
@@ -51,6 +53,8 @@ class MarketplaceApiTests(APITestCase):
             "category": "Plumbing",
             "description": "The sink is leaking under the cabinet.",
             "location": "Makati",
+            "latitude": "14.554700",
+            "longitude": "121.024400",
             "budget": "2500.00",
         }
         if contractor_id:
@@ -65,6 +69,8 @@ class MarketplaceApiTests(APITestCase):
         job = JobRequest.objects.get()
         self.assertEqual(job.customer, self.customer)
         self.assertEqual(job.contractor, self.contractor)
+        self.assertEqual(job.latitude, Decimal("14.554700"))
+        self.assertEqual(job.longitude, Decimal("121.024400"))
         self.assertEqual(job.status, JobRequest.Status.REQUESTED)
 
     def test_contractor_cannot_create_job_request(self):

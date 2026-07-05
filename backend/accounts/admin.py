@@ -31,6 +31,12 @@ class UserAdmin(DjangoUserAdmin):
                     "profile_picture",
                     "government_id",
                     "contractor_verification_status",
+                    "location",
+                    "latitude",
+                    "longitude",
+                    "service_radius_km",
+                    "hourly_rate",
+                    "services",
                 )
             },
         ),
