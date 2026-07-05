@@ -1,10 +1,12 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
-from .storage import PrivateMediaStorage
+from django.conf import settings
+
+from .storage import PrivateMediaStorage, PrivateS3MediaStorage
 
 
-private_media_storage = PrivateMediaStorage()
+private_media_storage = PrivateS3MediaStorage() if settings.USE_S3 else PrivateMediaStorage()
 
 
 class UserManager(BaseUserManager):

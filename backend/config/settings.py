@@ -14,7 +14,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
+try:
+    import dj_database_url
+except ImportError:
+    dj_database_url = None
+
 load_dotenv()
+
+
+def env_list(name, default=""):
+    return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,12 +33,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-326@&c-q!i*!ca16m#*_35n!_zy8wh6=f@jz9wa5tp5xd4qe4z'
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+    "django-insecure-326@&c-q!i*!ca16m#*_35n!_zy8wh6=f@jz9wa5tp5xd4qe4z",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]", "backend", "0.0.0.0"]
+ALLOWED_HOSTS = env_list(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1,[::1],backend,0.0.0.0",
+)
 
 
 # Application definition
@@ -55,6 +70,7 @@ AUTH_USER_MODEL = 'accounts.User'
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -63,18 +79,24 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-    "http://localhost:5176",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://127.0.0.1:5175",
-    "http://127.0.0.1:5176",
-    "http://frontend",
-    "http://frontend:80",
-]
+CORS_ALLOWED_ORIGINS = env_list(
+    "CORS_ALLOWED_ORIGINS",
+    ",".join(
+        [
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:5175",
+            "http://localhost:5176",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+            "http://127.0.0.1:5175",
+            "http://127.0.0.1:5176",
+            "http://frontend",
+            "http://frontend:80",
+        ]
+    ),
+)
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
 ROOT_URLCONF = 'config.urls'
 
@@ -100,7 +122,14 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-if os.getenv("ENVIRONMENT") == "local":
+if os.getenv("DATABASE_URL") and dj_database_url:
+    DATABASES = {
+        "default": dj_database_url.config(
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+elif os.getenv("ENVIRONMENT") == "local":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -164,10 +193,38 @@ STATIC_ROOT = BASE_DIR / 'static'
 STATICFILES_DIRS = [
     'config/static',
 ]
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
+
+USE_S3 = os.getenv("USE_S3", "False") == "True"
+
+if USE_S3:
+    INSTALLED_APPS += ["storages"]
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = True
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_S3_OBJECT_PARAMETERS = {
+        "CacheControl": "max-age=86400",
+    }
+    STORAGES["default"] = {
+        "BACKEND": "accounts.storage.PublicS3MediaStorage",
+    }
+else:
+    STORAGES["default"] = {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
