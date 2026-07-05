@@ -16,9 +16,10 @@ COPY . .
 
 # Create necessary directories for static and media files
 RUN mkdir -p static media
+RUN chmod +x start.sh
 
 # Expose port
 EXPOSE 8000
 
 # Default command (can be overridden in docker-compose.yml)
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["./start.sh"]

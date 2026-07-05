@@ -122,9 +122,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-if os.getenv("DATABASE_URL") and dj_database_url:
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+if DATABASE_URL and "://" in DATABASE_URL and not DATABASE_URL.startswith("://") and dj_database_url:
     DATABASES = {
         "default": dj_database_url.config(
+            default=DATABASE_URL,
             conn_max_age=600,
             conn_health_checks=True,
         )
