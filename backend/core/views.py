@@ -4,3 +4,7 @@ from django.shortcuts import render
 # Create your views here.
 def test_api(request):
     return JsonResponse({"message": "Backend Connected"})
+
+
+def healthz(request):
+    return JsonResponse({"status": "ok"})
