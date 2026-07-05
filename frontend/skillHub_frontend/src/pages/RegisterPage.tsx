@@ -175,7 +175,7 @@ export default function RegisterPage() {
                   value={form.firstName}
                   onChange={handleChange}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-violet-500 focus:bg-white"
-                  placeholder="Chloee"
+                  placeholder="First Name"
                   required
                 />
               </label>
@@ -188,7 +188,7 @@ export default function RegisterPage() {
                   value={form.lastName}
                   onChange={handleChange}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-violet-500 focus:bg-white"
-                  placeholder="Chua"
+                  placeholder="Last Name"
                   required
                 />
               </label>
