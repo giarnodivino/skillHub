@@ -4,4 +4,10 @@ venv/
 env/
 ENV/
 
+# Ignore environment files
+.env
+.env.*
+*.env
+!.env.example
+
 node_modules/

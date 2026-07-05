@@ -86,7 +86,7 @@ function HomePage() {
 
         <div className="rounded-3xl border border-amber-200 bg-amber-50 p-8">
           <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-700">Why it feels safer</p>
-          <h2 className="mt-3 text-3xl font-bold text-slate-900">Contractors are checked before going public.</h2>
+          <h2 className="mt-3 text-3xl font-bold text-slate-900">Contractor`s are checked before going public.</h2>
           <ul className="mt-6 space-y-3">
             {trustItems.map((item) => (
               <li key={item} className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
