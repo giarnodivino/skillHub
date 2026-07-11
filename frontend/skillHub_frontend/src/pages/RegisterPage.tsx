@@ -140,7 +140,7 @@ export default function RegisterPage() {
         <div className="flex flex-col justify-between bg-slate-950 p-8 text-white sm:p-10 lg:p-12">
           <div>
             <p className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm font-medium tracking-wide">
-              Join SkillHub
+              Join NexTask
             </p>
             <h1 className="text-3xl font-semibold sm:text-4xl">
               Create an account and start connecting with trusted professionals.
@@ -162,7 +162,7 @@ export default function RegisterPage() {
         <div className="p-6 sm:p-8 lg:p-10">
           <div className="mb-6">
             <h2 className="text-2xl font-semibold text-slate-900">Create your account</h2>
-            <p className="mt-2 text-sm text-slate-500">Choose how you want to use SkillHub.</p>
+            <p className="mt-2 text-sm text-slate-500">Choose how you want to use NexTask.</p>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
